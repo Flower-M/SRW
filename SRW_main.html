@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Road Watch</title>
+  <style>
+    :root {
+      --bg-dark: #0a1826;
+      --bg-light: #0e1a25;
+      --primary: #1f91ce;
+      --accent: #1ab394;
+      --warning: #f1556c;
+      --font-color: #e0e0e0;
+      --side-color: #172a3a;
+      --highlight: #2d3f53;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--font-color);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      background-color: var(--highlight);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      font-size: 18px;
+      border-bottom: 1px solid #2c3e50;
+    }
+
+    .top-right {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    aside {
+      width: 240px;
+      background-color: var(--side-color);
+      padding: 28px 20px;
+    }
+
+    aside strong {
+      font-size: 17px;
+      color: var(--accent);
+    }
+
+    aside ul {
+      list-style: none;
+      margin-top: 28px;
+    }
+
+    aside ul li {
+      margin-bottom: 16px;
+      font-size: 15px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    aside ul li:hover {
+      background-color: var(--highlight);
+    }
+
+    main {
+      flex: 1;
+      padding: 32px;
+      background-color: var(--bg-light);
+    }
+
+    .main-content {
+      background-color: #15212e;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      min-height: 420px;
+    }
+
+    h2 {
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #cccccc;
+    }
+
+    #clock {
+      font-family: monospace;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div><a href="SRW.html"><strong>Smart Road Watch</strong></a></div>
+    <div class="top-right">
+      <div>👤 사용자 이름</div>
+      <div>🔔</div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside>
+      <strong>📂 메뉴</strong>
+      <ul>
+        <li><a href="dashboard.html">🏠 대시보드</a></li>
+        <li><a href="map.html">🗺️ 실시간 지도</a></li>
+        <li><a href="damage.html">📋 손상 목록</a></li>
+        <li><a href="report.html">📊 통계 리포트</a></li>
+        <li><a href="device.html">🛠️ 장비 관리(관리자)</a></li>
+        <li><a href="user.html">👥 사용자 관리(관리자)</a></li>
+        <li><a href="setting.html">⚙️ 시스템 설정</a></li>
+      </ul>
+    </aside>
+
+    <main>
+      <div class="main-content">
+        <h2>메인 콘텐츠 영역</h2>
+        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
+      document.getElementById("clock").textContent = timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
