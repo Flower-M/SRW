@@ -5,8 +5,8 @@
   <title>Smart Road Watch</title>
   <style>
     :root {
-      --bg-dark: 	#0a1826;
-      --bg-light: #091018;
+      --bg-dark: #0a1826;
+      --bg-light: #0e1a25;
       --primary: #1f91ce;
       --accent: #1ab394;
       --warning: #f1556c;
@@ -28,6 +28,11 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
     }
 
     header {
@@ -58,27 +63,45 @@
       padding: 28px 20px;
     }
 
-    aside strong {
-      font-size: 17px;
-      color: var(--accent);
-    }
-
     aside ul {
       list-style: none;
-      margin-top: 28px;
+      margin-top: 0;
     }
 
     aside ul li {
-      margin-bottom: 16px;
-      font-size: 15px;
       cursor: pointer;
       padding: 6px 10px;
+      font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
+
+      margin-top: 8px
     }
 
     aside ul li:hover {
       background-color: var(--highlight);
+    }
+
+    .admin-toggle {
+      font-weight: normal;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .admin-toggle .arrow {
+      font-size: 12px;
+      margin-left: 8px;
+      transition: transform 0.2s ease;
+    }
+
+
+    .admin-submenu {
+      display: none;
+      padding-left: 20px;
+      font-size: 16px;
     }
 
     main {
@@ -108,35 +131,51 @@
       font-family: monospace;
       font-weight: bold;
     }
+
+    .user-icon {
+      width: 22px;
+      height: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
   </style>
 </head>
 <body>
   <header>
-    <div><strong>Smart Road Watch</strong></div>
+    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
     <div class="top-right">
-      <div>👤 사용자 이름</div>
-      <div>🔔</div>
       <div id="clock">--:--:--</div>
+      <div>🔔</div>
+      <div>
+        사용자 이름
+        <img src="human_icon.png" alt="User Icon" class="user-icon">
+      </div>
     </div>
   </header>
 
   <div class="container">
     <aside>
-      <strong>📂 메뉴</strong>
       <ul>
-        <li>🏠 대시보드</li>
-        <li>🗺️ 실시간 지도</li>
-        <li>📋 손상 목록</li>
-        <li>📊 통계 리포트</li>
-        <li>🛠️ 장비 관리(관리자)</li>
-        <li>👥 사용자 관리(관리자)</li>
-        <li>⚙️ 시스템 설정</li>
+        <li><a href="index.html">대시보드</a></li>
+        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_damage.html">손상 목록</a></li>
+        <li><a href="SRW_report.html">통계 리포트</a></li>
+
+        <li class="admin-toggle">
+          관리자 <span class="arrow">▼</span>
+        </li>
+
+        <li class="admin-submenu"><a href="SRW_equipment.html">장비 관리</a></li>
+        <li class="admin-submenu"><a href="SRW_user.html">사용자 관리</a></li>
+
+        <li><a href="SRW_system.html">시스템 설정</a></li>
       </ul>
     </aside>
 
     <main>
       <div class="main-content">
-        <h2>메인 콘텐츠 영역</h2>
+        <h2>손상 목록</h2>
         <p>이곳에 페이지별 내용이 출력됩니다.</p>
       </div>
     </main>
@@ -151,5 +190,20 @@
     setInterval(updateClock, 1000);
     updateClock();
   </script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const toggle = document.querySelector(".admin-toggle");
+      const submenus = document.querySelectorAll(".admin-submenu");
+      const arrow = toggle.querySelector(".arrow");
+
+      toggle.addEventListener("click", function () {
+        const isHidden = submenus[0].style.display === "none";
+        submenus.forEach(el => el.style.display = isHidden ? "block" : "none");
+        arrow.textContent = isHidden ? "▲" : "▼";
+      });
+    });
+  </script>
+
 </body>
 </html>
