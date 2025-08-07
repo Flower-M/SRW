@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <title>Smart Road Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg-dark: #0a1826;
       --bg-light: #0e1a25;
-      --primary: #1f91ce;
+      --primary: #f7f8f8;
       --accent: #1ab394;
       --warning: #f1556c;
       --font-color: #e0e0e0;
       --side-color: #172a3a;
       --highlight: #2d3f53;
+
+      --header-bg: #2f3a4a;
+      --search-bg: #3f4b5c;
+      --border-color: #1f2a3a;
+      --popup-bg: #1c2c3a;
+      --gray-text: #ccc;
+      --alert-badge: red;
+      --pure-white: white;
     }
 
     * {
@@ -36,20 +50,106 @@
     }
 
     header {
-      background-color: var(--highlight);
-      color: white;
+      background-color: var(--header-bg);
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      font-size: 18px;
-      border-bottom: 1px solid #2c3e50;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .top-right {
+    .header-left {
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 12px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--search-bg);
+      border-radius: 20px;
+      padding: 6px 12px;
+    }
+
+    .search-bar {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px;
+      font-size: 14px;
+      color: var(--pure-white);
+      width: 160px;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      background-color: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .notification {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background-color: var(--alert-badge);
+      color: var(--pure-white);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--pure-white);
+      font-size: 14px;
+    }
+
+    .profile-pic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-text {
+      font-weight: bold;
+      font-size: 18px;
+      color: var(--pure-white);
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .dropdown {
+      font-size: 12px;
+      color: var(--gray-text);
     }
 
     .container {
@@ -65,17 +165,15 @@
 
     aside ul {
       list-style: none;
-      margin-top: 0;
     }
 
     aside ul li {
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 10px 10px;
       font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
-
-      margin-top: 8px
+      margin-top: 10px;
     }
 
     aside ul li:hover {
@@ -83,8 +181,7 @@
     }
 
     .admin-toggle {
-      font-weight: normal;
-      color: white;
+      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -97,11 +194,11 @@
       transition: transform 0.2s ease;
     }
 
-
     .admin-submenu {
       display: none;
       padding-left: 20px;
       font-size: 16px;
+      margin-top: 4px;
     }
 
     main {
@@ -111,45 +208,164 @@
     }
 
     .main-content {
-      background-color: #15212e;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      min-height: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
     }
 
-    h2 {
+    /* -------------------- */
+    /* 카드 공통 스타일 */
+    /* -------------------- */
+    .card {
+      background-color: #1c2c3a;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .card h3 {
       color: var(--primary);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
-    p {
+    .note {
+      font-size: 14px;
       color: #cccccc;
+      margin-top: 24px;
     }
 
-    #clock {
-      font-family: monospace;
-      font-weight: bold;
+    /*세팅 박스*/
+
+    .setting-item {
+      border-top: 1px solid var(--highlight);
+      padding: 16px 0;
     }
 
-    .user-icon {
-      width: 22px;
-      height: 20px;
-      margin-left: 6px;
-      vertical-align: middle;
+    .setting-item:first-of-type {
+      border-top: none;
     }
 
+    .setting-header h3 {
+      margin: 0;
+      color: var(--primary);
+    }
+
+    .setting-header p {
+      font-size: 14px;
+      color: var(--gray-text);
+      margin-top: 4px;
+    }
+
+    .toggle-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      font-size: 16px;
+      color: var(--font-color);
+    }
+
+    /* 가로 구분선 */
+    .toggle-list hr {
+      border: none;
+      border-top: 1px solid #3a4a5a;
+      margin: 0;
+    }
+
+    /* 스위치 토글 스타일 */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #888;
+      transition: 0.4s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background-color: var(--accent);
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(18px);
+    }
+
+    .api-input {
+      margin-top: 12px;
+      padding: 8px;
+      border: 1px solid var(--highlight);
+      border-radius: 6px;
+      width: 100%;
+      background-color: var(--bg-dark);
+      color: var(--pure-white);
+      font-size: 14px;
+    }
+
+    .placeholder-box {
+      margin-top: 12px;
+      padding: 24px;
+      border: 1px dashed var(--gray-text);
+      border-radius: 6px;
+      color: var(--gray-text);
+      text-align: center;
+      font-size: 14px;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
-    <div class="top-right">
-      <div id="clock">--:--:--</div>
-      <div>🔔</div>
-      <div>
-        사용자 이름
-        <img src="human_icon.png" alt="User Icon" class="user-icon">
+    <div class="header-left">
+      <img src="logo.png" alt="로고" class="logo-img">
+      <span class="logo-text">Smart Road Watch</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrapper">
+        <input type="text" class="search-bar" placeholder="Search...">
+        <img src="search.png" alt="검색" class="header-icon search-icon">
+      </div>
+      <div class="notification">
+        <img src="bell.png" alt="알림" class="header-icon">
+        <span class="badge">12</span>
+      </div>
+      <div class="profile">
+        <img src="profile.png" alt="프로필" class="profile-pic">
+        <span class="username">admin</span>
+        <span class="dropdown">▼</span>
       </div>
     </div>
   </header>
@@ -158,38 +374,69 @@
     <aside>
       <ul>
         <li><a href="index.html">대시보드</a></li>
-        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_map.html">도로 위험 지도</a></li>
         <li><a href="SRW_damage.html">손상 목록</a></li>
         <li><a href="SRW_report.html">통계 리포트</a></li>
-
-        <li class="admin-toggle">
-          관리자 <span class="arrow">▼</span>
-        </li>
-
+        <li class="admin-toggle">관리자 <span class="arrow">▼</span></li>
         <li class="admin-submenu"><a href="SRW_equipment.html">장비 관리</a></li>
         <li class="admin-submenu"><a href="SRW_user.html">사용자 관리</a></li>
-
         <li><a href="SRW_system.html">시스템 설정</a></li>
       </ul>
     </aside>
 
     <main>
       <div class="main-content">
-        <h2>시스템 설정</h2>
-        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        <section class="card">
+          <h2>시스템 설정</h2>
+
+          <div class="setting-item">
+            <div class="setting-header">
+              <h3>알림 설정</h3>
+            </div>
+            <div class="toggle-list">
+              <div class="toggle-row">
+                <span>탐지 알람</span>
+                <label class="switch">
+                  <input type="checkbox" checked>
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <hr>
+              <div class="toggle-row">
+                <span>신속처리 대상 알람</span>
+                <label class="switch">
+                  <input type="checkbox">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <hr>
+              <div class="toggle-row">
+                <span>해결 알람</span>
+                <label class="switch">
+                  <input type="checkbox">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-header">
+              <h3>대시보드 구성</h3>
+            </div>
+            <div class="placeholder-box">편집 기능 자리</div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-header">
+              <h3>API 연동</h3>
+            </div>
+            <input type="text" class="api-input" placeholder="API Key를 입력하세요">
+          </div>
+        </section>
       </div>
     </main>
   </div>
-
-  <script>
-    function updateClock() {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
-      document.getElementById("clock").textContent = timeString;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-  </script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -204,6 +451,6 @@
       });
     });
   </script>
-
 </body>
+
 </html>
