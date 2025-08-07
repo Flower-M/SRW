@@ -1,18 +1,31 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Smart Road Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg-dark: #0a1826;
       --bg-light: #0e1a25;
-      --primary: #1f91ce;
+      --primary: #f7f8f8;
       --accent: #1ab394;
       --warning: #f1556c;
       --font-color: #e0e0e0;
       --side-color: #172a3a;
       --highlight: #2d3f53;
+      --header-bg: #2f3a4a;
+      --search-bg: #3f4b5c;
+      --border-color: #1f2a3a;
+      --popup-bg: #1c2c3a;
+      --gray-text: #ccc;
+      --alert-badge: red;
+      --pure-white: white;
     }
 
     * {
@@ -36,20 +49,106 @@
     }
 
     header {
-      background-color: var(--highlight);
-      color: white;
+      background-color: var(--header-bg);
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      font-size: 18px;
-      border-bottom: 1px solid #2c3e50;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .top-right {
+    .header-left {
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 12px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--search-bg);
+      border-radius: 20px;
+      padding: 6px 12px;
+    }
+
+    .search-bar {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px;
+      font-size: 14px;
+      color: var(--pure-white);
+      width: 160px;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      background-color: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .notification {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background-color: var(--alert-badge);
+      color: var(--pure-white);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--pure-white);
+      font-size: 14px;
+    }
+
+    .profile-pic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-text {
+      font-weight: bold;
+      font-size: 18px;
+      color: var(--pure-white);
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .dropdown {
+      font-size: 12px;
+      color: var(--gray-text);
     }
 
     .container {
@@ -70,12 +169,11 @@
 
     aside ul li {
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 10px 10px;
       font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
-
-      margin-top: 8px
+      margin-top: 10px;
     }
 
     aside ul li:hover {
@@ -83,8 +181,7 @@
     }
 
     .admin-toggle {
-      font-weight: normal;
-      color: white;
+      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -97,11 +194,11 @@
       transition: transform 0.2s ease;
     }
 
-
     .admin-submenu {
       display: none;
       padding-left: 20px;
       font-size: 16px;
+      margin-top: 4px;
     }
 
     main {
@@ -111,45 +208,155 @@
     }
 
     .main-content {
-      background-color: #15212e;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      min-height: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
     }
 
-    h2 {
+    .map-card {
+      grid-column: 1 / -1;
+      background-color: var(--popup-bg);
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .map-card h2 {
       color: var(--primary);
       margin-bottom: 12px;
     }
 
-    p {
-      color: #cccccc;
+    #map {
+      height: 800px;
+      border-radius: 8px;
     }
 
-    #clock {
-      font-family: monospace;
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .filter-bar select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background-color: var(--highlight);
+      color: var(--pure-white);
+      font-size: 16px;
+    }
+
+    .popup-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 320px;
+    }
+
+    .popup-image {
+      width: 80px;
+      height: 80px;
+      background-color: var(--highlight);
+      border-radius: 6px;
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+
+    .popup-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 16px;
+      color: var(--font-color);
+    }
+
+    .popup-info div {
+      margin-bottom: 4px;
+    }
+
+    .leaflet-popup-content {
+      color: var(--font-color);
+      opacity: 1 !important;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background-color: var(--popup-bg);
+      border-radius: 8px;
+    }
+
+    /* 클러스터 스타일 */
+    .marker-cluster-small,
+    .marker-cluster-small div {
+      background-color: #1ab394 !important;
+      color: white !important;
+    }
+
+    .marker-cluster-medium,
+    .marker-cluster-medium div {
+      background-color: #f39c12 !important;
+      color: white !important;
+    }
+
+    .marker-cluster-large,
+    .marker-cluster-large div {
+      background-color: #e74c3c !important;
+      color: white !important;
+    }
+
+    .marker-cluster div {
       font-weight: bold;
+      font-size: 14px;
     }
 
-    .user-icon {
-      width: 22px;
-      height: 20px;
-      margin-left: 6px;
-      vertical-align: middle;
+    /* 버튼 UI */
+    #map-control {
+      position: absolute;
+      top: 125px;
+      right: 28px;
+      z-index: 1000;
     }
 
+    .fit-button-img {
+      width: 36px;
+      height: 36px;
+      background-color: white;
+      border: 2px solid #acacac;
+      border-radius: 4px;
+      padding: 6px;
+      object-fit: contain;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      box-shadow: none;
+    }
+
+    .fit-button-img:hover {
+      background-color: #f4f4f4d8;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
-    <div class="top-right">
-      <div id="clock">--:--:--</div>
-      <div>🔔</div>
-      <div>
-        사용자 이름
-        <img src="human_icon.png" alt="User Icon" class="user-icon">
+    <div class="header-left">
+      <img src="logo.png" alt="로고" class="logo-img" />
+      <span class="logo-text">Smart Road Watch</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrapper">
+        <input type="text" class="search-bar" placeholder="Search..." />
+        <img src="search.png" alt="검색" class="header-icon search-icon" />
+      </div>
+      <div class="notification">
+        <img src="bell.png" alt="알림" class="header-icon" />
+        <span class="badge">12</span>
+      </div>
+      <div class="profile">
+        <img src="profile.png" alt="프로필" class="profile-pic" />
+        <span class="username">admin</span>
+        <span class="dropdown">▼</span>
       </div>
     </div>
   </header>
@@ -158,7 +365,7 @@
     <aside>
       <ul>
         <li><a href="index.html">대시보드</a></li>
-        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_map.html">도로 위험 지도</a></li>
         <li><a href="SRW_damage.html">손상 목록</a></li>
         <li><a href="SRW_report.html">통계 리포트</a></li>
 
@@ -175,35 +382,176 @@
 
     <main>
       <div class="main-content">
-        <h2>맵</h2>
-        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        <section class="map-card">
+          <h2>실시간 도로 손상 지도</h2>
+          <div class="filter-bar">
+            <select name="region">
+              <option>지역 전체</option>
+              <option>서울</option>
+              <option>부산</option>
+            </select>
+            <select name="date">
+              <option>전체 기간</option>
+              <option>최근 24시간</option>
+              <option>최근 1주일</option>
+            </select>
+            <select name="type">
+              <option>전체 유형</option>
+              <option>포트홀</option>
+              <option>균열</option>
+              <option>악어균열</option>
+            </select>
+            <select name="status">
+              <option>전체 상태</option>
+              <option>해결</option>
+              <option>미해결</option>
+              <option>신속처리대상</option>
+            </select>
+          </div>
+          <div id="map"></div>
+          <div id="map-control">
+            <img id="fit-button" src="map_location.png" alt="전체 보기" class="fit-button-img" title="전체 보기" />
+          </div>
+        </section>
       </div>
     </main>
   </div>
 
   <script>
-    function updateClock() {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
-      document.getElementById("clock").textContent = timeString;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-  </script>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    let map;
+    let markers;
+    document.addEventListener("DOMContentLoaded", () => {
       const toggle = document.querySelector(".admin-toggle");
       const submenus = document.querySelectorAll(".admin-submenu");
       const arrow = toggle.querySelector(".arrow");
-
-      toggle.addEventListener("click", function () {
+      toggle.addEventListener("click", () => {
         const isHidden = submenus[0].style.display === "none";
         submenus.forEach(el => el.style.display = isHidden ? "block" : "none");
         arrow.textContent = isHidden ? "▲" : "▼";
       });
+
+      map = L.map("map").setView([35.1595, 126.8526], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      markers = L.markerClusterGroup();
+      map.addLayer(markers);
+
+      const sampleData = [
+        {
+          lat: 35.1595, lng: 126.8526,
+          address: "광주 서구 쌍촌동 123-45",
+          type: "포트홀",
+          status: "미해결",
+          region: "광주",
+          date: "2025-08-05 20:40"
+        },
+        {
+          lat: 35.17, lng: 126.85,
+          address: "광주 북구 운암동 87-2",
+          type: "균열",
+          status: "해결",
+          region: "광주",
+          date: "2025-08-05 19:22"
+        },
+        {
+          lat: 35.155, lng: 126.86,
+          address: "광주 남구 봉선동 22-17",
+          type: "악어균열",
+          status: "신속처리대상",
+          region: "광주",
+          date: "2025-08-01 18:05"
+        }
+      ];
+
+      const regionSelect = document.querySelector('select[name="region"]');
+      const dateSelect = document.querySelector('select[name="date"]');
+      const typeSelect = document.querySelector('select[name="type"]');
+      const statusSelect = document.querySelector('select[name="status"]');
+
+      function filterData() {
+        markers.clearLayers();
+        const now = new Date();
+        const region = regionSelect.value;
+        const date = dateSelect.value;
+        const type = typeSelect.value;
+        const status = statusSelect.value;
+
+        const filtered = sampleData.filter(item => {
+          if (region !== "지역 전체" && !item.region.includes(region)) return false;
+          if (type !== "전체 유형" && item.type !== type) return false;
+          if (status !== "전체 상태" && item.status !== status) return false;
+          if (date !== "전체 기간") {
+            const itemTime = new Date(item.date);
+            const diff = now - itemTime;
+            if (date === "최근 24시간" && diff > 86400000) return false;
+            if (date === "최근 1주일" && diff > 604800000) return false;
+          }
+          return true;
+        });
+
+        filtered.forEach(item => {
+          const popup = `
+      <div class="popup-container">
+        <img src="https://via.placeholder.com/80" class="popup-image" />
+        <div class="popup-info">
+          <div><strong>주소:</strong> ${item.address}</div>
+          <div><strong>유형:</strong> ${item.type}</div>
+          <div><strong>처리상태:</strong> ${item.status}</div>
+          <div><strong>탐지시간:</strong> ${item.date}</div>
+        </div>
+      </div>`;
+
+          const marker = L.marker([item.lat, item.lng], {
+            icon: getCustomMarkerIcon(item.status)
+          }).bindPopup(popup);
+
+          markers.addLayer(marker);
+        });
+      }
+
+      [regionSelect, dateSelect, typeSelect, statusSelect].forEach(sel =>
+        sel.addEventListener("change", filterData)
+      );
+
+      filterData();
+    });
+    document.getElementById("fit-button").addEventListener("click", () => {
+      if (markers && markers.getLayers().length > 0) {
+        const bounds = markers.getBounds();
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } else {
+        alert("표시된 마커가 없습니다.");
+      }
     });
   </script>
 
+  <script>
+    function getCustomMarkerIcon(status) {
+      let iconUrl;
+      switch (status) {
+        case "해결":
+          iconUrl = "pin_green.png";
+          break;
+        case "미해결":
+          iconUrl = "pin_orange.png";
+          break;
+        case "신속처리대상":
+          iconUrl = "pin_red.png";
+          break;
+        default:
+          iconUrl = "pin_blue.png";
+      }
+
+      return L.icon({
+        iconUrl: iconUrl,
+        iconSize: [40, 42],        // 이미지 크기
+        iconAnchor: [15, 42],      // 지도상 좌표 기준점 (핀 끝)
+        popupAnchor: [0, -40]      // 팝업 위치 조정
+      });
+    }
+  </script>
 </body>
+
 </html>
