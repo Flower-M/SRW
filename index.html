@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <title>Smart Road Watch</title>
   <style>
+    /* -------------------- */
+    /* 기본 설정 및 변수 정의 */
+    /* -------------------- */
     :root {
+      /* 색상 변수 */
       --bg-dark: #0a1826;
       --bg-light: #0e1a25;
-      --primary: #1f91ce;
-      --accent: #1ab394;
+      --primary: #f7f8f8;
+      --accent: #5d8cca;
       --warning: #f1556c;
       --font-color: #e0e0e0;
       --side-color: #172a3a;
@@ -21,6 +26,9 @@
       box-sizing: border-box;
     }
 
+    /* -------------------- */
+    /* 폰트 및 전체 레이아웃 */
+    /* -------------------- */
     body {
       font-family: 'Segoe UI', sans-serif;
       background-color: var(--bg-dark);
@@ -35,23 +43,122 @@
       color: inherit;
     }
 
+    /* -------------------- */
+    /* 헤더 스타일 */
+    /* -------------------- */
+    /* ===== 상단바 스타일 ===== */
     header {
-      background-color: var(--highlight);
-      color: white;
+      background-color: #2f3a4a;
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      font-size: 18px;
-      border-bottom: 1px solid #2c3e50;
+      border-bottom: 1px solid #1f2a3a;
     }
 
-    .top-right {
+    .header-left {
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 12px;
     }
 
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: #3f4b5c;
+      border-radius: 20px;
+      padding: 6px 12px;
+    }
+
+    .search-bar {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px;
+      font-size: 14px;
+      color: white;
+      width: 160px;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .icon-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      background-color: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .notification {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background-color: red;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: white;
+      font-size: 14px;
+    }
+
+    .profile-pic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-text {
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .dropdown {
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    /* -------------------- */
+    /* 사이드바 (aside) 메뉴 */
+    /* -------------------- */
     .container {
       display: flex;
       flex: 1;
@@ -70,12 +177,11 @@
 
     aside ul li {
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 10px 10px;
       font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
-
-      margin-top: 8px
+      margin-top: 10px;
     }
 
     aside ul li:hover {
@@ -97,13 +203,16 @@
       transition: transform 0.2s ease;
     }
 
-
     .admin-submenu {
       display: none;
       padding-left: 20px;
       font-size: 16px;
+      margin-top: 4px;
     }
 
+    /* -------------------- */
+    /* 메인 컨텐츠 구조 */
+    /* -------------------- */
     main {
       flex: 1;
       padding: 32px;
@@ -111,45 +220,286 @@
     }
 
     .main-content {
-      background-color: #15212e;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      min-height: 420px;
+      display: grid;
+      grid-template-areas:
+        "info-card damage-pie-chart"
+        "stats-card damage-pie-chart"
+        "recent-detections recent-detections"
+        "alert-summary alert-summary";
+      grid-template-columns: 1fr 2fr;
+      grid-template-rows: auto auto auto auto;
+      grid-row-gap: 20px;
+      grid-column-gap: 20px;
+      background-color: transparent;
     }
 
-    h2 {
+    /* -------------------- */
+    /* 카드 공통 스타일 */
+    /* -------------------- */
+    .card {
+      background-color: #1c2c3a;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .card h2 {
       color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #cccccc;
+      margin-top: 24px;
+    }
+
+    /* -------------------- */
+    /* 날씨 카드 스타일 */
+    /* -------------------- */
+    .weather-card {
+      grid-area: info-card;
+      background-color: #1e2e3e;
+      color: #fff;
+      padding: 16px;
+      border-radius: 10px;
+    }
+
+    .weather-top {
+      display: flex;
+      flex-direction: column;
       margin-bottom: 12px;
     }
 
-    p {
-      color: #cccccc;
+    #weather-date {
+      font-size: 18px;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+
+    .weather-main {
+      display: flex;
+      align-items: center;
+    }
+
+    .weather-icon {
+      width: 63px;
+      height: 63px;
+      margin-right: 16px;
+      object-fit: contain;
+    }
+
+    .temp-info #temperature {
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    .temp-info #weather-desc {
+      font-size: 16px;
+      color: #bbb;
+    }
+
+    .weather-details {
+      display: flex;
+      justify-content: flex-start;
+      gap: 72px;
+      font-size: 16px;
+      color: #ccc;
+    }
+
+
+    .icon-small {
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* -------------------- */
+    /* 통계 카드 스타일 */
+    /* -------------------- */
+    .stats-card {
+      grid-area: stats-card;
+    }
+
+    .stats-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+    }
+
+    .stat-item {
+      text-align: center;
+      flex: 1;
+    }
+
+    .stat-label {
+      font-size: 16px;
+      margin-bottom: 4px;
+      color: #ccc;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .stat-value.total {
+      color: #3498db;
+    }
+
+    .stat-value.resolved {
+      color: #27ae60;
+    }
+
+    .stat-value.unresolved {
+      color: #f39c12;
+    }
+
+    .stat-value.urgent {
+      color: #e74c3c;
+    }
+
+    .divider {
+      width: 1.5px;
+      height: 55px;
+      background-color: #888;
+      margin: 0 12px;
+      opacity: 1;
+    }
+
+    /* -------------------- */
+    /* 탐지 리스트 테이블 */
+    /* -------------------- */
+    .recent-detections {
+      grid-area: recent-detections;
+    }
+
+    .detection-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+      color: #e0e0e0;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .detection-table th,
+    .detection-table td {
+      padding: 12px 16px;
+      border-bottom: 2px solid #2c3e50;
+      border-right: 1px solid #3d5a73;
+    }
+
+    .detection-table th {
+      background-color: #263a4a;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .detection-table td {
+      background-color: #16232f;
+      font-weight: 500;
+    }
+
+    .detection-table th:last-child,
+    .detection-table td:last-child {
+      border-right: none;
+    }
+
+    .detection-table tr:hover td {
+      background-color: #223344;
+      transition: background-color 0.2s;
+    }
+
+    /* -------------------- */
+    /* 상태 태그 색상 */
+    /* -------------------- */
+    .status-tag {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .status-tag.resolved {
+      background-color: #27ae60;
+      color: white;
+    }
+
+    .status-tag.unresolved {
+      background-color: #f39c12;
+      color: white;
+    }
+
+    .status-tag.urgent {
+      background-color: #e74c3c;
+      color: white;
+    }
+
+    .status-tag.pending {
+      background-color: #3498db;
+      color: white;
+    }
+
+    /* -------------------- */
+    /* 알림 요약 */
+    /* -------------------- */
+    .alert-box {
+      background-color: #1e2e3e;
+      color: #f39c12;
+      border: 1px solid #f39c12;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      box-shadow: 0 0 5px #f39c1260;
+      border-left: 10px solid #f39c12;
+    }
+
+    .alert-summary {
+      grid-area: alert-summary;
+    }
+
+    /* -------------------- */
+    /* 기타 레이아웃 요소 */
+    /* -------------------- */
+    .damage-pie-chart {
+      grid-area: damage-pie-chart;
     }
 
     #clock {
       font-family: monospace;
       font-weight: bold;
     }
-
-    .user-icon {
-      width: 22px;
-      height: 20px;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-
   </style>
 </head>
+
 <body>
   <header>
-    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
-    <div class="top-right">
-      <div id="clock">--:--:--</div>
-      <div>🔔</div>
-      <div>
-        사용자 이름
-        <img src="human_icon.png" alt="User Icon" class="user-icon">
+    <div class="header-left">
+      <img src="logo.png" alt="로고" class="logo-img">
+      <span class="logo-text">Smart Road Watch</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrapper">
+        <input type="text" class="search-bar" placeholder="Search..." />
+        <img src="search.png" alt="검색" class="header-icon search-icon">
+      </div>
+      <div class="notification">
+        <img src="bell.png" alt="알림" class="header-icon">
+        <span class="badge">12</span>
+      </div>
+      <div class="profile">
+        <img src="profile.png" alt="프로필" class="profile-pic">
+        <span class="username">admin</span>
+        <span class="dropdown">▼</span>
       </div>
     </div>
   </header>
@@ -158,7 +508,7 @@
     <aside>
       <ul>
         <li><a href="index.html">대시보드</a></li>
-        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_map.html">도로 위험 지도</a></li>
         <li><a href="SRW_damage.html">손상 목록</a></li>
         <li><a href="SRW_report.html">통계 리포트</a></li>
 
@@ -175,8 +525,98 @@
 
     <main>
       <div class="main-content">
-        <h2>메인 콘텐츠 영역</h2>
-        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        <section class="card weather-card">
+          <div class="weather-top">
+            <div id="weather-date">--/-- (요일) --:--:--</div>
+            <div class="weather-main">
+              <img id="weather-icon" src="sunny.png" alt="날씨 아이콘" class="weather-icon">
+              <div class="temp-info">
+                <div id="temperature">--℃</div>
+                <div id="weather-desc">날씨 설명</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="weather-details">
+            <div><img src="humidity.png" class="icon-small"> 습도: <span id="humidity">--%</span></div>
+            <div><img src="rain.png" class="icon-small"> 강수량: <span id="rain">--mm</span></div>
+            <div><img src="wind.png" class="icon-small"> 풍속: <span id="wind">--m/s</span></div>
+          </div>
+        </section>
+        <section class="card stats-card">
+          <h2>누적 탐지 현황</h2>
+          <div class="stats-box">
+            <div class="stat-item">
+              <div class="stat-label">전체</div>
+              <div class="stat-value total">111</div>
+            </div>
+            <div class="divider"></div>
+            <div class="stat-item">
+              <div class="stat-label">해결</div>
+              <div class="stat-value resolved">222</div>
+            </div>
+            <div class="divider"></div>
+            <div class="stat-item">
+              <div class="stat-label">미해결</div>
+              <div class="stat-value unresolved">333</div>
+            </div>
+            <div class="divider"></div>
+            <div class="stat-item">
+              <div class="stat-label">신속처리대상</div>
+              <div class="stat-value urgent">444</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card damage-pie-chart">
+          <h2>손상 유형 분포 그래프</h2>
+        </section>
+        <section class="card recent-detections">
+          <h2>최근 탐지 내역 리스트</h2>
+          <table class="detection-table">
+            <thead>
+              <tr>
+                <th>주소</th>
+                <th>유형</th>
+                <th>시간</th>
+                <th>처리 상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>광주 서구 쌍촌동 123-45</td>
+                <td>포트홀</td>
+                <td>14:25</td>
+                <td><span class="status-tag unresolved">미해결</span></td>
+              </tr>
+              <tr>
+                <td>광주 북구 운암동 77-12</td>
+                <td>균열</td>
+                <td>13:10</td>
+                <td><span class="status-tag resolved">해결</span></td>
+              </tr>
+              <tr>
+                <td>광주 남구 봉선동 88-21</td>
+                <td>함몰</td>
+                <td>12:02</td>
+                <td><span class="status-tag urgent">신속처리대상</span></td>
+              </tr>
+              <tr>
+                <td>광주 동구 산수동 55-10</td>
+                <td>균열</td>
+                <td>11:45</td>
+                <td><span class="status-tag pending">확인중</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="card alert-summary">
+          <h2>알림 요약</h2>
+          <div class="alert-box">
+            <span class="icon">⚠️</span>
+            최근 1시간 내 <strong>위험 등급</strong> 탐지 로그가 <strong>n개</strong> 존재합니다.
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -205,5 +645,129 @@
     });
   </script>
 
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const options = { weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      const formatted = now.toLocaleDateString('ko-KR', options);
+      const dateString = now.toLocaleDateString('ko-KR') + ' ' + formatted;
+      document.getElementById('weather-date').textContent = dateString;
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+
+    // 위도/경도를 격자 좌표(nx, ny)로 변환하는 함수
+    function convertToGrid(lat, lon) {
+      const RE = 6371.00877;
+      const GRID = 5.0;
+      const SLAT1 = 30.0;
+      const SLAT2 = 60.0;
+      const OLON = 126.0;
+      const OLAT = 38.0;
+      const XO = 43;
+      const YO = 136;
+
+      const DEGRAD = Math.PI / 180.0;
+
+      let re = RE / GRID;
+      let slat1 = SLAT1 * DEGRAD;
+      let slat2 = SLAT2 * DEGRAD;
+      let olon = OLON * DEGRAD;
+      let olat = OLAT * DEGRAD;
+
+      let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+      sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+      let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+      sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+      let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+      ro = re * sf / Math.pow(ro, sn);
+
+      let ra = Math.tan(Math.PI * 0.25 + lat * DEGRAD * 0.5);
+      ra = re * sf / Math.pow(ra, sn);
+      let theta = lon * DEGRAD - olon;
+      if (theta > Math.PI) theta -= 2.0 * Math.PI;
+      if (theta < -Math.PI) theta += 2.0 * Math.PI;
+      theta *= sn;
+
+      return {
+        nx: Math.floor(ra * Math.sin(theta) + XO + 0.5),
+        ny: Math.floor(ro - ra * Math.cos(theta) + YO + 0.5)
+      };
+    }
+
+    async function fetchWeather() {
+      const API_KEY = "T48a07DcaQtbSwrOKhQlYDAaLfDd0yMY0VuGxehwrzjAwrE06CrSml4YRB6G23nIzY7UoFb3PHJ8H6KEnQKXow%3D%3D";
+      const lat = 35.1595; // 광주
+      const lon = 126.8526;
+      const { nx, ny } = convertToGrid(lat, lon);
+
+      const now = new Date();
+
+      // 기준 시간 계산 (현재 시각 기준 가장 가까운 3시간 단위 시각)
+      const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
+      const hour = now.getHours();
+      const baseTime = (() => {
+        if (hour < 2) return "2300";
+        else if (hour < 5) return "0200";
+        else if (hour < 8) return "0500";
+        else if (hour < 11) return "0800";
+        else if (hour < 14) return "1100";
+        else if (hour < 17) return "1400";
+        else if (hour < 20) return "1700";
+        else if (hour < 23) return "2000";
+        else return "2300";
+      })();
+
+      const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const items = data.response.body.items.item;
+
+      let temp = "--", desc = "맑음", hum = "--", rain = "-", wind = "--", sky = "1", pty = "0";
+
+      for (let item of items) {
+        if (item.category === "TMP") temp = `${item.fcstValue}℃`;
+        if (item.category === "REH") hum = `${item.fcstValue}%`;
+        if (item.category === "WSD") wind = `${item.fcstValue} m/s`;
+        if (item.category === "PCP") rain = item.fcstValue === "강수없음" ? "-" : item.fcstValue;
+        if (item.category === "SKY") sky = item.fcstValue;
+        if (item.category === "PTY") pty = item.fcstValue;
+      }
+
+      // 설명 텍스트 설정
+      if (pty === "0") {
+        desc = sky === "1" ? "맑음" : sky === "3" ? "구름많음" : sky === "4" ? "흐림" : "맑음";
+      } else if (pty === "1") {
+        desc = "비";
+      } else if (pty === "2") {
+        desc = "비 또는 눈";
+      } else if (pty === "3") {
+        desc = "눈";
+      } else if (pty === "4") {
+        desc = "소나기";
+      }
+
+      document.getElementById("temperature").textContent = temp;
+      document.getElementById("weather-desc").textContent = desc;
+      document.getElementById("humidity").textContent = hum;
+      document.getElementById("wind").textContent = wind;
+      document.getElementById("rain").textContent = rain;
+
+      // 아이콘 설정
+      let icon = "sunny.png";
+      if (pty === "1") icon = "rainy.png";
+      else if (pty === "2") icon = "rain_snow.png";
+      else if (pty === "3") icon = "snow.png";
+      else if (pty === "4") icon = "rainy.png";
+      else if (sky === "3" || sky === "4") icon = "cloudy.png";
+
+      document.getElementById("weather-icon").src = icon;
+    }
+
+    fetchWeather();
+  </script>
+
 </body>
+
 </html>
