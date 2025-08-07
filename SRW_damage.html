@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <title>Smart Road Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg-dark: #0a1826;
       --bg-light: #0e1a25;
-      --primary: #1f91ce;
+      --primary: #f7f8f8;
       --accent: #1ab394;
       --warning: #f1556c;
       --font-color: #e0e0e0;
       --side-color: #172a3a;
       --highlight: #2d3f53;
+
+      --header-bg: #2f3a4a;
+      --search-bg: #3f4b5c;
+      --border-color: #1f2a3a;
+      --popup-bg: #1c2c3a;
+      --gray-text: #ccc;
+      --alert-badge: red;
+      --pure-white: white;
     }
 
     * {
@@ -36,20 +50,106 @@
     }
 
     header {
-      background-color: var(--highlight);
-      color: white;
+      background-color: var(--header-bg);
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      font-size: 18px;
-      border-bottom: 1px solid #2c3e50;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .top-right {
+    .header-left {
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 12px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--search-bg);
+      border-radius: 20px;
+      padding: 6px 12px;
+    }
+
+    .search-bar {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px;
+      font-size: 14px;
+      color: var(--pure-white);
+      width: 160px;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      background-color: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .notification {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background-color: var(--alert-badge);
+      color: var(--pure-white);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--pure-white);
+      font-size: 14px;
+    }
+
+    .profile-pic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-text {
+      font-weight: bold;
+      font-size: 18px;
+      color: var(--pure-white);
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .dropdown {
+      font-size: 12px;
+      color: var(--gray-text);
     }
 
     .container {
@@ -65,17 +165,15 @@
 
     aside ul {
       list-style: none;
-      margin-top: 0;
     }
 
     aside ul li {
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 10px 10px;
       font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
-
-      margin-top: 8px
+      margin-top: 10px;
     }
 
     aside ul li:hover {
@@ -83,8 +181,7 @@
     }
 
     .admin-toggle {
-      font-weight: normal;
-      color: white;
+      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -97,11 +194,11 @@
       transition: transform 0.2s ease;
     }
 
-
     .admin-submenu {
       display: none;
       padding-left: 20px;
       font-size: 16px;
+      margin-top: 4px;
     }
 
     main {
@@ -111,45 +208,166 @@
     }
 
     .main-content {
-      background-color: #15212e;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      min-height: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
     }
 
-    h2 {
+    /* -------------------- */
+    /* 카드 공통 스타일 */
+    /* -------------------- */
+    .card {
+      background-color: #1c2c3a;
+      padding: 16px;
+      border-radius: 8px;
+      grid-column: 1 / -1;
+    }
+
+    .card h3 {
       color: var(--primary);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
-    p {
+    .note {
+      font-size: 14px;
       color: #cccccc;
+      margin-top: 24px;
     }
 
-    #clock {
-      font-family: monospace;
-      font-weight: bold;
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 11px;
+      margin-bottom: 16px;
     }
 
-    .user-icon {
-      width: 22px;
-      height: 20px;
-      margin-left: 6px;
-      vertical-align: middle;
+    .filter-bar select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background-color: var(--highlight);
+      color: var(--pure-white);
+      font-size: 16px;
     }
 
+    .filter-button {
+      padding: 8px 14px;
+      background-color: var(--accent);
+      color: var(--pure-white);
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .filter-button:hover {
+      background-color: #1e806c;
+    }
+
+    .detection-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+      color: #e0e0e0;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      overflow: hidden;
+      table-layout: fixed;
+    }
+
+    .detection-table th,
+    .detection-table td {
+      padding: 12px 16px;
+      border-bottom: 2px solid #2c3e50;
+      border-right: 1px solid #3d5a73;
+      word-wrap: break-word;
+    }
+
+    .detection-table th {
+      background-color: #263a4a;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .detection-table td {
+      background-color: #16232f;
+      font-weight: 500;
+    }
+
+    .detection-table th:last-child,
+    .detection-table td:last-child {
+      border-right: none;
+    }
+
+    .detection-table tr:hover td {
+      background-color: #223344;
+      transition: background-color 0.2s;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      background-color: var(--accent);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background-color: #17a488;
+    }
+
+    .status-label {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .status-pending {
+      background-color: #f39c12;
+    }
+
+    .status-done {
+      background-color: #2ecc71;
+    }
+
+    .status-urgent {
+      background-color: #e74c3c;
+    }
+
+    .status-confirming {
+      background-color: #3498db;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
-    <div class="top-right">
-      <div id="clock">--:--:--</div>
-      <div>🔔</div>
-      <div>
-        사용자 이름
-        <img src="human_icon.png" alt="User Icon" class="user-icon">
+    <div class="header-left">
+      <img src="logo.png" alt="로고" class="logo-img">
+      <span class="logo-text">Smart Road Watch</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrapper">
+        <input type="text" class="search-bar" placeholder="Search...">
+        <img src="search.png" alt="검색" class="header-icon search-icon">
+      </div>
+      <div class="notification">
+        <img src="bell.png" alt="알림" class="header-icon">
+        <span class="badge">12</span>
+      </div>
+      <div class="profile">
+        <img src="profile.png" alt="프로필" class="profile-pic">
+        <span class="username">admin</span>
+        <span class="dropdown">▼</span>
       </div>
     </div>
   </header>
@@ -158,38 +376,88 @@
     <aside>
       <ul>
         <li><a href="index.html">대시보드</a></li>
-        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_map.html">도로 위험 지도</a></li>
         <li><a href="SRW_damage.html">손상 목록</a></li>
         <li><a href="SRW_report.html">통계 리포트</a></li>
-
-        <li class="admin-toggle">
-          관리자 <span class="arrow">▼</span>
-        </li>
-
+        <li class="admin-toggle">관리자 <span class="arrow">▼</span></li>
         <li class="admin-submenu"><a href="SRW_equipment.html">장비 관리</a></li>
         <li class="admin-submenu"><a href="SRW_user.html">사용자 관리</a></li>
-
         <li><a href="SRW_system.html">시스템 설정</a></li>
       </ul>
     </aside>
 
     <main>
       <div class="main-content">
-        <h2>손상 목록</h2>
-        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        <section class="card">
+          <h2>도로 손상 목록</h2>
+
+          <div class="filter-bar">
+            <select id="filter-region">
+              <option value="">지역 전체</option>
+              <option value="서울">서울</option>
+              <option value="부산">부산</option>
+            </select>
+            <select id="filter-date">
+              <option value="">전체 기간</option>
+              <option value="24h">최근 24시간</option>
+              <option value="1w">최근 1주일</option>
+            </select>
+            <select id="filter-type">
+              <option value="">전체 유형</option>
+              <option value="포트홀">포트홀</option>
+              <option value="균열">균열</option>
+              <option value="악어균열">악어균열</option>
+            </select>
+            <select id="filter-status">
+              <option value="">전체 상태</option>
+              <option value="해결">해결</option>
+              <option value="미해결">미해결</option>
+              <option value="신속처리대상">신속처리대상</option>
+            </select>
+            <button id="filter-button" class="filter-button">검색</button>
+            <button id="excel-button" class="filter-button">엑셀 다운로드</button>
+          </div>
+
+          <table class="detection-table">
+            <thead>
+              <tr>
+                <th>주소</th>
+                <th>유형</th>
+                <th>시간</th>
+                <th>처리 상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>광주 서구 쌍촌동 123-45</td>
+                <td>포트홀</td>
+                <td>14:25</td>
+                <td><span class="status-label status-pending">미해결</span></td>
+              </tr>
+              <tr>
+                <td>광주 북구 운암동 77-12</td>
+                <td>균열</td>
+                <td>13:10</td>
+                <td><span class="status-label status-done">해결</span></td>
+              </tr>
+              <tr>
+                <td>광주 남구 봉선동 88-21</td>
+                <td>함몰</td>
+                <td>12:02</td>
+                <td><span class="status-label status-urgent">신속처리대상</span></td>
+              </tr>
+              <tr>
+                <td>광주 동구 산수동 55-10</td>
+                <td>균열</td>
+                <td>11:45</td>
+                <td><span class="status-label status-confirming">확인중</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
       </div>
     </main>
   </div>
-
-  <script>
-    function updateClock() {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
-      document.getElementById("clock").textContent = timeString;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-  </script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -205,5 +473,42 @@
     });
   </script>
 
+  <script>
+    document.getElementById('filter-button').addEventListener('click', function () {
+      const region = document.getElementById('filter-region').value;
+      const date = document.getElementById('filter-date').value;
+      const type = document.getElementById('filter-type').value;
+      const status = document.getElementById('filter-status').value;
+
+      const rows = document.querySelectorAll('.detection-table tbody tr');
+
+      rows.forEach(row => {
+        const [addressCell, typeCell, timeCell, statusCell] = row.children;
+
+        const address = addressCell.textContent.trim();
+        const damageType = typeCell.textContent.trim();
+        const damageStatus = statusCell.textContent.trim();
+        const hour = parseInt(timeCell.textContent.trim().split(':')[0]);
+
+        let show = true;
+
+        if (region && !address.includes(region)) show = false;
+        if (type && damageType !== type) show = false;
+        if (status && damageStatus !== status) show = false;
+
+        // 시간 필터 (예시: 단순히 시간대 기반으로 필터링)
+        if (date) {
+          const now = new Date();
+          const damageHour = now.getHours() - hour;
+
+          if (date === "24h" && damageHour > 24) show = false;
+          if (date === "1w" && damageHour > 168) show = false;
+        }
+
+        row.style.display = show ? "" : "none";
+      });
+    });
+  </script>
 </body>
+
 </html>
