@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
@@ -180,7 +182,6 @@
     }
 
     .admin-toggle {
-      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -226,12 +227,14 @@
     }
 
     .card {
-      background-color: var(--popup-bg);
-      border-radius: 10px;
-      padding: 20px;
+      background-color: #1c2c3a;
+      color: var(--primary);
+      padding: 16px;
+      border-radius: 8px;
+      grid-column: 1 / -1;
+
       display: flex;
       flex-direction: column;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     }
 
     .card h2 {
@@ -257,8 +260,18 @@
       font-size: 14px;
     }
 
+    .main-content,
+    .left-column,
+    .right-column,
+    .card {
+      min-height: 0;
+    }
+
     .chart-area {
-      flex-grow: 1;
+      flex: 1 1 0;
+      min-height: 260px;
+      position: relative;
+      overflow: hidden;
       background-color: #2a3b4d;
       border-radius: 6px;
       display: flex;
@@ -269,10 +282,29 @@
       padding: 12px;
     }
 
+    .chart-area canvas {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100%;
+    }
+
     .rate-box {
       display: flex;
       justify-content: space-around;
       align-items: center;
+    }
+
+    .map-area {
+      padding: 0;
+      margin: 0;
+      display: flex;
+      position: relative;
+      background-color: #2a3b4d;
+      border-radius: 6px;
+      min-height: 380px;
+      height: auto;
+      flex: 1 1 0;
+      overflow: hidden;
     }
 
     .rate-box-wrapper {
@@ -305,6 +337,10 @@
       background-color: #888;
       margin: 0 130px;
       opacity: 1;
+    }
+
+    #mapHeat {
+      padding: 0 !important;
     }
   </style>
 </head>
@@ -354,7 +390,7 @@
             <div class="card-header">
               <h2>지역별 분포</h2>
             </div>
-            <div class="chart-area">[Heatmap]</div>
+            <div id="mapHeat" class="map-area"></div>
           </section>
 
           <section class="card">
@@ -387,14 +423,14 @@
             <div class="card-header">
               <h2>발생 추이 그래프</h2>
             </div>
-            <div class="chart-area">[Line Chart]</div>
+            <div class="chart-area"><canvas id="trendLine"></canvas></div>
           </section>
 
           <section class="card">
             <div class="card-header">
               <h2>유형별 비중</h2>
             </div>
-            <div class="chart-area">[Pie Chart]</div>
+            <div class="chart-area"><canvas id="typePie"></canvas></div>
           </section>
         </div>
 
@@ -414,8 +450,224 @@
         submenus.forEach(el => el.style.display = isHidden ? "block" : "none");
         arrow.textContent = isHidden ? "▲" : "▼";
       });
+
+      /* CSV 기반 샘플 JSON */
+      const SRW_SAMPLE = {
+        records: [
+          {
+            lat: 35.1578, lng: 126.8465,
+            address: "광주 서구 쌍촌동 123-45",
+            type: "포트홀",
+            status: "미해결",
+            region: "서구",
+            date: "2025-08-21 14:25"
+          },
+          {
+            lat: 35.1772, lng: 126.8418,
+            address: "광주 북구 운암동 77-12",
+            type: "균열",
+            status: "해결",
+            region: "북구",
+            date: "2025-08-22 13:10"
+          },
+          {
+            lat: 35.1434, lng: 126.8883,
+            address: "광주 남구 봉선동 88-21",
+            type: "악어균열",
+            status: "신속처리대상",
+            region: "남구",
+            date: "2025-08-22 12:02"
+          },
+          {
+            lat: 35.1510, lng: 126.9274,
+            address: "광주 동구 산수동 55-10",
+            type: "균열",
+            status: "확인중",
+            region: "동구",
+            date: "2025-08-23 11:45"
+          }
+        ]
+      };
+
+      /*  공통 유틸: 그룹/포맷/지표 */
+      const fmtDate = (d) => new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
+      const groupBy = (arr, keyFn) => arr.reduce((acc, cur) => {
+        const k = keyFn(cur);
+        acc[k] = (acc[k] || 0) + 1;
+        return acc;
+      }, {});
+      const safeNum = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+
+      // 처리율/평균 처리시간 계산
+      const solved = SRW_SAMPLE.records.filter(r => r.status === "해결");
+      const total = SRW_SAMPLE.records.length;
+      const solvedRate = total ? (solved.length / total * 100) : 0;
+      const quickRate = (() => {
+        // "신속 처리" 기준(예: 24시간 이내) — 필요시 조정
+        const THRESHOLD_HOURS = 24;
+        const within = solved.filter(r => r.resolvedAt && r.occurredAt &&
+          (new Date(r.resolvedAt) - new Date(r.occurredAt)) / 36e5 <= THRESHOLD_HOURS);
+        return total ? (within.length / total * 100) : 0;
+      })();
+      const avgDurationMs = (() => {
+        const durations = solved
+          .filter(r => r.resolvedAt && r.occurredAt)
+          .map(r => (new Date(r.resolvedAt) - new Date(r.occurredAt)));
+        const s = durations.reduce((a, b) => a + b, 0);
+        return durations.length ? s / durations.length : 0;
+      })();
+      const hasDurations = avgDurationMs > 0;
+      const avgHours = Math.floor(avgDurationMs / 36e5);
+      const avgMins = Math.floor((avgDurationMs % 36e5) / 60000);
+
+      // UI 반영(처리율 카드)
+      const rateEls = document.querySelectorAll(".rate-value");
+      if (rateEls[0]) rateEls[0].textContent = `${solvedRate.toFixed(1)}%`; // 해결율
+      if (rateEls[1]) rateEls[1].textContent = `${quickRate.toFixed(1)}%`;  // 신속 처리율
+      if (rateEls[2]) rateEls[2].textContent = hasDurations ? `${avgHours}시간 ${avgMins}분` : "—"; // 평균 처리 시간
+
+      /* 히트맵 초기화 */
+      const mapEl = document.getElementById("mapHeat");
+      const map = L.map(mapEl).setView([35.1595, 126.8526], 12); // 광주광역시청 근방
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+
+      /* 지역별 카운트 집계 */
+      const regionCounts = SRW_SAMPLE.records.reduce((acc, r) => {
+        const key = r.region?.trim();
+        if (!key) return acc;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      /* 광주 5개 구 센트로이드(대략값) */
+      const REGION_CENTROIDS = {
+        "동구": [35.1460, 126.9230],
+        "서구": [35.1520, 126.8500],
+        "남구": [35.1260, 126.9020],
+        "북구": [35.1760, 126.9130],
+        "광산구": [35.1390, 126.7930]
+      };
+
+      /* 지역 히트포인트 생성: [lat, lng, weight 0~1] */
+      const counts = Object.values(regionCounts);
+      const maxCount = counts.length ? Math.max(...counts) : 0;
+
+      const regionHeatPoints = Object.entries(regionCounts).map(([region, count]) => {
+        const c = REGION_CENTROIDS[region];
+        if (!c) return null;
+        const weight = maxCount ? Math.max(0.2, count / maxCount) : 0.2;
+        return [c[0], c[1], weight];
+      }).filter(Boolean);
+
+      /* 히트레이어 추가 */
+      if (typeof L.heatLayer !== "function") {
+        console.error("leaflet.heat 플러그인이 로드되지 않았습니다.");
+      }
+
+      if (regionHeatPoints.length) {
+        const heat = L.heatLayer(regionHeatPoints, {
+          radius: 55,
+          blur: 25,
+          maxZoom: 12
+        }).addTo(map);
+
+        // 보기 좋은 자동 맞춤
+        const latlngs = regionHeatPoints.map(([lat, lng]) => [lat, lng]);
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds.pad(0.25));
+      } else {
+        console.warn("지역 히트 포인트가 없습니다. 데이터를 확인하세요.");
+      }
+
+      /* 초기 렌더 직후 크기 재계산 */
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+      });
+
+      /* 리사이즈 대응 */
+      window.addEventListener("resize", () => {
+        map.invalidateSize();
+      });
+
+      /* 라인 차트(일자별 발생 건수)*/
+      const perDay = groupBy(SRW_SAMPLE.records, r => fmtDate(r.date));
+      const trendLabels = Object.keys(perDay).sort();
+      const trendCounts = trendLabels.map(d => perDay[d]);
+
+      const lineEl = document.getElementById("trendLine");
+      if (lineEl) {
+        const lineCtx = lineEl.getContext("2d");
+        new Chart(lineCtx, {
+          type: "line",
+          data: {
+            labels: trendLabels,
+            datasets: [{
+              label: "일자별 발생 건수",
+              data: trendCounts,
+              tension: 0.3,
+              fill: false,
+              borderColor: "#1ab394",
+              backgroundColor: "#1ab394"
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: "#ffffff",   
+                  font: {
+                    size: 16,         
+                  },
+                  padding: 8
+                }
+              }
+            },
+            scales: {
+              x: { ticks: { color: "#e0e0e0" }, grid: { color: "rgba(255,255,255,0.08)" } },
+              y: { ticks: { color: "#e0e0e0" }, grid: { color: "rgba(255,255,255,0.08)" }, beginAtZero: true }
+            }
+          }
+        });
+      }
+
+      /* 파이 차트(유형별 비중) */
+      const perType = SRW_SAMPLE.records.reduce((acc, r) => {
+        const k = r.type || "기타";
+        acc[k] = (acc[k] || 0) + 1;
+        return acc;
+      }, {});
+      const typeLabels = Object.keys(perType);
+      const typeCounts = typeLabels.map(k => perType[k]);
+
+      const pieEl = document.getElementById("typePie");
+      if (pieEl) {
+        const pieCtx = pieEl.getContext("2d");
+        new Chart(pieCtx, {
+          type: "pie",
+          data: {
+            labels: typeLabels,
+            datasets: [{ data: typeCounts }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "bottom", labels: { color: "#e0e0e0" } },
+              tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.formattedValue}건` } }
+            }
+          }
+        });
+      }
     });
   </script>
+
 </body>
 
 </html>
