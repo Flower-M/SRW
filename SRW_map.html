@@ -181,7 +181,6 @@
     }
 
     .admin-toggle {
-      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -240,13 +239,33 @@
       margin-bottom: 16px;
     }
 
-    .filter-bar select {
+    .filter-bar select,
+    .filter-bar input[type="date"] {
       padding: 8px 12px;
       border-radius: 6px;
       border: none;
       background-color: var(--highlight);
       color: var(--pure-white);
       font-size: 16px;
+    }
+
+    .filter-bar .date-sep {
+      opacity: .8;
+      margin: 0 4px;
+    }
+
+    .btn-reset {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      background: var(--accent);
+      color: var(--pure-white);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .btn-reset:hover {
+      background-color: #17a488;
     }
 
     .popup-container {
@@ -386,28 +405,35 @@
           <h2>실시간 도로 손상 지도</h2>
           <div class="filter-bar">
             <select name="region">
-              <option>지역 전체</option>
-              <option>서울</option>
-              <option>부산</option>
+              <option>전체(광주)</option>
+              <option>동구</option>
+              <option>서구</option>
+              <option>남구</option>
+              <option>북구</option>
+              <option>광산구</option>
             </select>
-            <select name="date">
-              <option>전체 기간</option>
-              <option>최근 24시간</option>
-              <option>최근 1주일</option>
-            </select>
+
+            <input type="date" name="startDate" aria-label="시작일" />
+            <span class="date-sep">~</span>
+            <input type="date" name="endDate" aria-label="종료일" />
+
             <select name="type">
               <option>전체 유형</option>
               <option>포트홀</option>
               <option>균열</option>
               <option>악어균열</option>
             </select>
+
             <select name="status">
               <option>전체 상태</option>
               <option>해결</option>
               <option>미해결</option>
               <option>신속처리대상</option>
             </select>
+
+            <button type="button" id="reset-filters" class="btn-reset" title="필터 초기화">초기화</button>
           </div>
+
           <div id="map"></div>
           <div id="map-control">
             <img id="fit-button" src="map_location.png" alt="전체 보기" class="fit-button-img" title="전체 보기" />
@@ -440,54 +466,72 @@
 
       const sampleData = [
         {
-          lat: 35.1595, lng: 126.8526,
+          lat: 35.1578, lng: 126.8465,
           address: "광주 서구 쌍촌동 123-45",
           type: "포트홀",
           status: "미해결",
-          region: "광주",
-          date: "2025-08-05 20:40"
+          region: "서구",
+          date: "2025-08-21 14:25"
         },
         {
-          lat: 35.17, lng: 126.85,
-          address: "광주 북구 운암동 87-2",
+          lat: 35.1772, lng: 126.8418,
+          address: "광주 북구 운암동 77-12",
           type: "균열",
           status: "해결",
-          region: "광주",
-          date: "2025-08-05 19:22"
+          region: "북구",
+          date: "2025-08-22 13:10"
         },
         {
-          lat: 35.155, lng: 126.86,
-          address: "광주 남구 봉선동 22-17",
+          lat: 35.1434, lng: 126.8883,
+          address: "광주 남구 봉선동 88-21",
           type: "악어균열",
           status: "신속처리대상",
-          region: "광주",
-          date: "2025-08-01 18:05"
+          region: "남구",
+          date: "2025-08-22 12:02"
+        },
+        {
+          lat: 35.1510, lng: 126.9274,
+          address: "광주 동구 산수동 55-10",
+          type: "균열",
+          status: "확인중",
+          region: "동구",
+          date: "2025-08-23 11:45"
         }
       ];
 
       const regionSelect = document.querySelector('select[name="region"]');
-      const dateSelect = document.querySelector('select[name="date"]');
+      const startDateInput = document.querySelector('input[name="startDate"]');
+      const endDateInput = document.querySelector('input[name="endDate"]');
       const typeSelect = document.querySelector('select[name="type"]');
       const statusSelect = document.querySelector('select[name="status"]');
+      const resetBtn = document.getElementById('reset-filters');
 
       function filterData() {
         markers.clearLayers();
-        const now = new Date();
         const region = regionSelect.value;
-        const date = dateSelect.value;
+        const startVal = startDateInput.value; // "YYYY-MM-DD" 또는 빈 문자열
+        const endVal = endDateInput.value;     // "YYYY-MM-DD" 또는 빈 문자열
         const type = typeSelect.value;
         const status = statusSelect.value;
 
         const filtered = sampleData.filter(item => {
-          if (region !== "지역 전체" && !item.region.includes(region)) return false;
+          // 지역(구) 필터: "전체(광주)"가 아니면 정확히 일치
+          if (region !== "전체(광주)" && item.region !== region) return false;
+
+          // 유형/상태 필터
           if (type !== "전체 유형" && item.type !== type) return false;
           if (status !== "전체 상태" && item.status !== status) return false;
-          if (date !== "전체 기간") {
-            const itemTime = new Date(item.date);
-            const diff = now - itemTime;
-            if (date === "최근 24시간" && diff > 86400000) return false;
-            if (date === "최근 1주일" && diff > 604800000) return false;
+
+          // 기간(달력) 필터: 시작/종료일이 설정된 경우만 적용
+          if (startVal || endVal) {
+            const itemTime = new Date(item.date.replace(" ", "T")); // 표준 Date 파싱
+            const startTime = startVal ? new Date(startVal + "T00:00:00") : null;
+            const endTime = endVal ? new Date(endVal + "T23:59:59") : null;
+
+            if (startTime && itemTime < startTime) return false;
+            if (endTime && itemTime > endTime) return false;
           }
+
           return true;
         });
 
@@ -511,9 +555,18 @@
         });
       }
 
-      [regionSelect, dateSelect, typeSelect, statusSelect].forEach(sel =>
+      [regionSelect, startDateInput, endDateInput, typeSelect, statusSelect].forEach(sel =>
         sel.addEventListener("change", filterData)
       );
+
+      resetBtn.addEventListener('click', () => {
+        regionSelect.value = "전체(광주)";
+        startDateInput.value = "";
+        endDateInput.value = "";
+        typeSelect.value = "전체 유형";
+        statusSelect.value = "전체 상태";
+        filterData();
+      });
 
       filterData();
     });
