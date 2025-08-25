@@ -1,18 +1,27 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <title>Smart Road Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg-dark: #0a1826;
       --bg-light: #0e1a25;
-      --primary: #1f91ce;
-      --accent: #1ab394;
-      --warning: #f1556c;
       --font-color: #e0e0e0;
+      --header-bg: #2f3a4a;
+      --search-bg: #3f4b5c;
+      --border-color: #1f2a3a;
       --side-color: #172a3a;
       --highlight: #2d3f53;
+      --gray-text: #ccc;
+      --alert-badge: red;
+      --pure-white: white;
     }
 
     * {
@@ -36,20 +45,106 @@
     }
 
     header {
-      background-color: var(--highlight);
-      color: white;
+      background-color: var(--header-bg);
+      padding: 8px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      font-size: 18px;
-      border-bottom: 1px solid #2c3e50;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .top-right {
+    .header-left {
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 12px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--search-bg);
+      border-radius: 20px;
+      padding: 6px 12px;
+    }
+
+    .search-bar {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px;
+      font-size: 14px;
+      color: var(--pure-white);
+      width: 160px;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      background-color: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .notification {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background-color: var(--alert-badge);
+      color: var(--pure-white);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--pure-white);
+      font-size: 14px;
+    }
+
+    .profile-pic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-text {
+      font-weight: bold;
+      font-size: 18px;
+      color: var(--pure-white);
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .dropdown {
+      font-size: 12px;
+      color: var(--gray-text);
     }
 
     .container {
@@ -65,17 +160,15 @@
 
     aside ul {
       list-style: none;
-      margin-top: 0;
     }
 
     aside ul li {
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 10px 10px;
       font-size: 18px;
       border-radius: 6px;
       transition: background 0.2s;
-
-      margin-top: 8px
+      margin-top: 10px;
     }
 
     aside ul li:hover {
@@ -83,8 +176,6 @@
     }
 
     .admin-toggle {
-      font-weight: normal;
-      color: white;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -97,11 +188,11 @@
       transition: transform 0.2s ease;
     }
 
-
     .admin-submenu {
       display: none;
       padding-left: 20px;
       font-size: 16px;
+      margin-top: 4px;
     }
 
     main {
@@ -111,45 +202,44 @@
     }
 
     .main-content {
-      background-color: #15212e;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-      min-height: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
     }
 
-    h2 {
-      color: var(--primary);
-      margin-bottom: 12px;
+    .card {
+      background-color: #1c2c3a;
+      padding: 16px;
+      border-radius: 8px;
+      grid-column: 1 / -1;
     }
 
-    p {
-      color: #cccccc;
+    .card h2 {
+      color: var(--pure-white);
     }
-
-    #clock {
-      font-family: monospace;
-      font-weight: bold;
-    }
-
-    .user-icon {
-      width: 22px;
-      height: 20px;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-
   </style>
 </head>
+
 <body>
   <header>
-    <div><a href="index.html"><strong>Smart Road Watch</strong></a></div>
-    <div class="top-right">
-      <div id="clock">--:--:--</div>
-      <div>🔔</div>
-      <div>
-        사용자 이름
-        <img src="human_icon.png" alt="User Icon" class="user-icon">
+    <div class="header-left">
+      <img src="logo.png" alt="로고" class="logo-img">
+      <span class="logo-text">Smart Road Watch</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrapper">
+        <input type="text" class="search-bar" placeholder="Search...">
+        <img src="search.png" alt="검색" class="header-icon search-icon">
+      </div>
+      <div class="notification">
+        <img src="bell.png" alt="알림" class="header-icon">
+        <span class="badge">12</span>
+      </div>
+      <div class="profile">
+        <img src="profile.png" alt="프로필" class="profile-pic">
+        <span class="username">admin</span>
+        <span class="dropdown">▼</span>
       </div>
     </div>
   </header>
@@ -158,52 +248,38 @@
     <aside>
       <ul>
         <li><a href="index.html">대시보드</a></li>
-        <li><a href="SRW_map.html">실시간 지도</a></li>
+        <li><a href="SRW_map.html">도로 위험 지도</a></li>
         <li><a href="SRW_damage.html">손상 목록</a></li>
         <li><a href="SRW_report.html">통계 리포트</a></li>
-
-        <li class="admin-toggle">
-          관리자 <span class="arrow">▼</span>
-        </li>
-
+        <li class="admin-toggle">관리자 <span class="arrow">▼</span></li>
         <li class="admin-submenu"><a href="SRW_equipment.html">장비 관리</a></li>
         <li class="admin-submenu"><a href="SRW_user.html">사용자 관리</a></li>
-
         <li><a href="SRW_system.html">시스템 설정</a></li>
       </ul>
     </aside>
 
     <main>
       <div class="main-content">
-        <h2>장비 관리</h2>
-        <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        <section class="card">
+          <h2>장비 관리</h2>
+          <p>이곳에 페이지별 내용이 출력됩니다.</p>
+        </section>
       </div>
     </main>
   </div>
-
-  <script>
-    function updateClock() {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
-      document.getElementById("clock").textContent = timeString;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-  </script>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const toggle = document.querySelector(".admin-toggle");
-      const submenus = document.querySelectorAll(".admin-submenu");
-      const arrow = toggle.querySelector(".arrow");
-
-      toggle.addEventListener("click", function () {
-        const isHidden = submenus[0].style.display === "none";
-        submenus.forEach(el => el.style.display = isHidden ? "block" : "none");
-        arrow.textContent = isHidden ? "▲" : "▼";
-      });
-    });
-  </script>
-
 </body>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const toggle = document.querySelector(".admin-toggle");
+    const submenus = document.querySelectorAll(".admin-submenu");
+    const arrow = toggle.querySelector(".arrow");
+
+    toggle.addEventListener("click", function () {
+      const isHidden = submenus[0].style.display === "none";
+      submenus.forEach(el => el.style.display = isHidden ? "block" : "none");
+      arrow.textContent = isHidden ? "▲" : "▼";
+    });
+  });
+</script>
+
 </html>
