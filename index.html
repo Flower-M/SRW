@@ -189,8 +189,6 @@
     }
 
     .admin-toggle {
-      font-weight: normal;
-      color: white;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -262,6 +260,16 @@
       color: #fff;
       padding: 16px;
       border-radius: 10px;
+      position: relative;
+    }
+
+    .weather-location {
+      position: absolute;
+      margin-bottom: 8px;
+      right: 16px;
+      font-size: 18px;
+      color: #ccc;
+      opacity: 0.9;
     }
 
     .weather-top {
@@ -273,18 +281,20 @@
     #weather-date {
       font-size: 18px;
       color: #ccc;
-      margin-bottom: 8px;
+      margin-bottom: 16px;
     }
 
     .weather-main {
       display: flex;
       align-items: center;
+      margin-bottom: 12px;
     }
 
     .weather-icon {
       width: 63px;
       height: 63px;
-      margin-right: 16px;
+      margin-right: 30px;
+      margin-left: 20px;
       object-fit: contain;
     }
 
@@ -383,6 +393,7 @@
       box-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
       border-radius: 8px;
       overflow: hidden;
+      table-layout: fixed;
     }
 
     .detection-table th,
@@ -390,6 +401,7 @@
       padding: 12px 16px;
       border-bottom: 2px solid #2c3e50;
       border-right: 1px solid #3d5a73;
+      word-wrap: break-word;
     }
 
     .detection-table th {
@@ -417,31 +429,29 @@
     /* -------------------- */
     /* 상태 태그 색상 */
     /* -------------------- */
-    .status-tag {
+    .status-label {
+      display: inline-block;
       padding: 4px 10px;
       border-radius: 12px;
       font-size: 14px;
-      font-weight: bold;
-    }
-
-    .status-tag.resolved {
-      background-color: #27ae60;
+      font-weight: 600;
       color: white;
     }
 
-    .status-tag.unresolved {
+    .status-pending {
       background-color: #f39c12;
-      color: white;
     }
 
-    .status-tag.urgent {
+    .status-done {
+      background-color: #2ecc71;
+    }
+
+    .status-urgent {
       background-color: #e74c3c;
-      color: white;
     }
 
-    .status-tag.pending {
+    .status-confirming {
       background-color: #3498db;
-      color: white;
     }
 
     /* -------------------- */
@@ -477,6 +487,54 @@
     #clock {
       font-family: monospace;
       font-weight: bold;
+    }
+
+    /* 손상 유형 그래프 컨테이너 */
+    #damage-chart-wrap {
+      width: 100%;
+      height: 280px;
+      position: relative;
+    }
+
+    #damageChart {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 손상 유형 레이블 (HTML) */
+    #damage-labels {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    #damage-labels .label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e0e0e0;
+      letter-spacing: 0.2px;
+      opacity: 0.95;
+    }
+
+    /* 유형별 색상(원하면 변경) */
+    #damage-labels .pothole {
+      color: #5d8cca;
+    }
+
+    #damage-labels .crack {
+      color: #f39c12;
+    }
+
+    #damage-labels .alligator {
+      color: #e74c3c;
+    }
+
+    #damage-labels .total {
+      color: #9b59b6;
     }
   </style>
 </head>
@@ -526,6 +584,8 @@
     <main>
       <div class="main-content">
         <section class="card weather-card">
+          <div class="weather-location"></div>
+
           <div class="weather-top">
             <div id="weather-date">--/-- (요일) --:--:--</div>
             <div class="weather-main">
@@ -548,29 +608,34 @@
           <div class="stats-box">
             <div class="stat-item">
               <div class="stat-label">전체</div>
-              <div class="stat-value total">111</div>
+              <div class="stat-value total" id="total-count">0</div>
             </div>
             <div class="divider"></div>
             <div class="stat-item">
               <div class="stat-label">해결</div>
-              <div class="stat-value resolved">222</div>
+              <div class="stat-value resolved" id="resolved-count">0</div>
             </div>
             <div class="divider"></div>
             <div class="stat-item">
               <div class="stat-label">미해결</div>
-              <div class="stat-value unresolved">333</div>
+              <div class="stat-value unresolved" id="unresolved-count">0</div>
             </div>
             <div class="divider"></div>
             <div class="stat-item">
               <div class="stat-label">신속처리대상</div>
-              <div class="stat-value urgent">444</div>
+              <div class="stat-value urgent" id="urgent-count">0</div>
             </div>
           </div>
         </section>
 
         <section class="card damage-pie-chart">
           <h2>손상 유형 분포 그래프</h2>
+          <div id="damage-chart-wrap">
+            <canvas id="damageChart"></canvas>
+          </div>
+          <div id="damage-labels" aria-hidden="true"></div>
         </section>
+
         <section class="card recent-detections">
           <h2>최근 탐지 내역 리스트</h2>
           <table class="detection-table">
@@ -578,7 +643,7 @@
               <tr>
                 <th>주소</th>
                 <th>유형</th>
-                <th>시간</th>
+                <th>일시</th>
                 <th>처리 상태</th>
               </tr>
             </thead>
@@ -586,26 +651,26 @@
               <tr>
                 <td>광주 서구 쌍촌동 123-45</td>
                 <td>포트홀</td>
-                <td>14:25</td>
-                <td><span class="status-tag unresolved">미해결</span></td>
+                <td>2025-08-21 14:25:00</td>
+                <td><span class="status-label status-pending">미해결</span></td>
               </tr>
               <tr>
                 <td>광주 북구 운암동 77-12</td>
                 <td>균열</td>
-                <td>13:10</td>
-                <td><span class="status-tag resolved">해결</span></td>
+                <td>2025-08-22 13:10:00</td>
+                <td><span class="status-label status-done">해결</span></td>
               </tr>
               <tr>
                 <td>광주 남구 봉선동 88-21</td>
-                <td>함몰</td>
-                <td>12:02</td>
-                <td><span class="status-tag urgent">신속처리대상</span></td>
+                <td>악어균열</td>
+                <td>2025-08-22 12:02:00</td>
+                <td><span class="status-label status-urgent">신속처리대상</span></td>
               </tr>
               <tr>
                 <td>광주 동구 산수동 55-10</td>
                 <td>균열</td>
-                <td>11:45</td>
-                <td><span class="status-tag pending">확인중</span></td>
+                <td>2025-08-23 11:45:00</td>
+                <td><span class="status-label status-confirming">확인중</span></td>
               </tr>
             </tbody>
           </table>
@@ -625,7 +690,8 @@
     function updateClock() {
       const now = new Date();
       const timeString = now.toLocaleTimeString("ko-KR", { hour12: false });
-      document.getElementById("clock").textContent = timeString;
+      const el = document.getElementById("clock");
+      if (el) el.textContent = timeString;  // null 체크
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -643,6 +709,42 @@
         arrow.textContent = isHidden ? "▲" : "▼";
       });
     });
+  </script>
+
+  <script>
+    // 역지오코딩 (중복 제거 + 한국식 우선순위)
+    async function setLocationName(lat, lon) {
+      const el = document.querySelector('.weather-location');
+      el.textContent = '위치 확인 중…';
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=ko`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'SmartRoadWatch/1.0' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const data = await res.json();
+        const a = data.address || {};
+
+        // 1단계: 시/도
+        const lvl1 = a.state || a.region || a.province || a.city;
+
+        // 2단계: 구/군을 최우선 → 없으면 시/군/읍/면
+        let lvl2 = a.district || a.county || a.city || a.town;
+
+        // 3단계: 동/리/행정동 등
+        let lvl3 = a.suburb || a.neighbourhood || a.village || a.hamlet
+          || a.quarter || a.city_district;
+
+        if (lvl2 === lvl1) lvl2 = null;
+        if (lvl3 === lvl2 || lvl3 === lvl1) lvl3 = null;
+
+        const name = [lvl1, lvl2, lvl3].filter(Boolean).join(' ');
+        el.textContent = name || (data.display_name?.split(',')?.[0] || '알 수 없는 위치');
+      } catch (e) {
+        console.warn('역지오코딩 실패:', e.message);
+        el.textContent = '위치 표시 실패';
+      }
+    }
   </script>
 
   <script>
@@ -695,58 +797,90 @@
       };
     }
 
+    // 기준일자/시간 계산 유틸
+    function getBaseDateTime(now = new Date()) {
+      const slots = [2, 5, 8, 11, 14, 17, 20, 23]; // 시(hour)
+      let y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+      let h = now.getHours();
+
+      let baseHour = slots.filter(v => v <= h).pop();
+      if (baseHour === undefined) {
+        baseHour = 23;
+        const yesterday = new Date(y, m, d - 1);
+        y = yesterday.getFullYear();
+        m = yesterday.getMonth();
+        d = yesterday.getDate();
+      }
+
+      const pad = n => String(n).padStart(2, '0');
+      const baseDate = `${y}${pad(m + 1)}${pad(d)}`;
+      const baseTime = `${pad(baseHour)}00`;
+      return { baseDate, baseTime };
+    }
+
     async function fetchWeather() {
-      const API_KEY = "T48a07DcaQtbSwrOKhQlYDAaLfDd0yMY0VuGxehwrzjAwrE06CrSml4YRB6G23nIzY7UoFb3PHJ8H6KEnQKXow%3D%3D";
-      const lat = 35.1595; // 광주
+      const SERVICE_KEY_DECODING = "Qz+N490G9pDR1TcPvKQEl4hJ862IHZ5rpQzhTVtl3Ob+mqSAJqHCJYSqZp7Ut/nm3j+EtNt9LNau+EKUU29E/A==";
+      const API_KEY = encodeURIComponent(SERVICE_KEY_DECODING);
+
+      const lat = 35.1595;  // 광주
       const lon = 126.8526;
+      setLocationName(lat, lon);  // 지역명 자동 표시
+
       const { nx, ny } = convertToGrid(lat, lon);
 
-      const now = new Date();
+      let { baseDate, baseTime } = getBaseDateTime(new Date());
 
-      // 기준 시간 계산 (현재 시각 기준 가장 가까운 3시간 단위 시각)
-      const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
-      const hour = now.getHours();
-      const baseTime = (() => {
-        if (hour < 2) return "2300";
-        else if (hour < 5) return "0200";
-        else if (hour < 8) return "0500";
-        else if (hour < 11) return "0800";
-        else if (hour < 14) return "1100";
-        else if (hour < 17) return "1400";
-        else if (hour < 20) return "1700";
-        else if (hour < 23) return "2000";
-        else return "2300";
-      })();
+      async function requestOnce(date, time) {
+        const url =
+          `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst` +
+          `?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${date}&base_time=${time}&nx=${nx}&ny=${ny}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data;
+      }
 
-      const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+      let data;
+      try {
+        data = await requestOnce(baseDate, baseTime);
+        if (!data?.response?.body?.items?.item?.length) throw new Error('NO_ITEMS');
+      } catch (e) {
+        // 이전 기준시각 계산
+        const slots = ["0200", "0500", "0800", "1100", "1400", "1700", "2000", "2300"];
+        const idx = slots.indexOf(baseTime);
+        let prevTime = idx > 0 ? slots[idx - 1] : "2300";
+        let prevDate = baseDate;
+        if (idx === 0) {
+          const dt = new Date(
+            Number(baseDate.slice(0, 4)),
+            Number(baseDate.slice(4, 6)) - 1,
+            Number(baseDate.slice(6, 8)) - 1
+          );
+          const pad = n => String(n).padStart(2, '0');
+          prevDate = `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
+        }
+        data = await requestOnce(prevDate, prevTime);
+      }
 
-      const res = await fetch(url);
-      const data = await res.json();
       const items = data.response.body.items.item;
 
       let temp = "--", desc = "맑음", hum = "--", rain = "-", wind = "--", sky = "1", pty = "0";
-
-      for (let item of items) {
-        if (item.category === "TMP") temp = `${item.fcstValue}℃`;
-        if (item.category === "REH") hum = `${item.fcstValue}%`;
-        if (item.category === "WSD") wind = `${item.fcstValue} m/s`;
-        if (item.category === "PCP") rain = item.fcstValue === "강수없음" ? "-" : item.fcstValue;
-        if (item.category === "SKY") sky = item.fcstValue;
-        if (item.category === "PTY") pty = item.fcstValue;
+      for (const it of items) {
+        if (it.category === "TMP") temp = `${it.fcstValue}℃`;
+        if (it.category === "REH") hum = `${it.fcstValue}%`;
+        if (it.category === "WSD") wind = `${it.fcstValue} m/s`;
+        if (it.category === "PCP") rain = it.fcstValue === "강수없음" ? "-" : it.fcstValue;
+        if (it.category === "SKY") sky = it.fcstValue;
+        if (it.category === "PTY") pty = it.fcstValue;
       }
 
-      // 설명 텍스트 설정
+      // 설명/아이콘
       if (pty === "0") {
         desc = sky === "1" ? "맑음" : sky === "3" ? "구름많음" : sky === "4" ? "흐림" : "맑음";
-      } else if (pty === "1") {
-        desc = "비";
-      } else if (pty === "2") {
-        desc = "비 또는 눈";
-      } else if (pty === "3") {
-        desc = "눈";
-      } else if (pty === "4") {
-        desc = "소나기";
-      }
+      } else if (pty === "1") desc = "비";
+      else if (pty === "2") desc = "비 또는 눈";
+      else if (pty === "3") desc = "눈";
+      else if (pty === "4") desc = "소나기";
 
       document.getElementById("temperature").textContent = temp;
       document.getElementById("weather-desc").textContent = desc;
@@ -754,18 +888,220 @@
       document.getElementById("wind").textContent = wind;
       document.getElementById("rain").textContent = rain;
 
-      // 아이콘 설정
       let icon = "sunny.png";
-      if (pty === "1") icon = "rainy.png";
+      if (pty === "1" || pty === "4") icon = "rainy.png";
       else if (pty === "2") icon = "rain_snow.png";
       else if (pty === "3") icon = "snow.png";
-      else if (pty === "4") icon = "rainy.png";
       else if (sky === "3" || sky === "4") icon = "cloudy.png";
-
       document.getElementById("weather-icon").src = icon;
     }
 
-    fetchWeather();
+    document.addEventListener('DOMContentLoaded', () => {
+      (async () => {
+        try {
+          await fetchWeather();
+        } catch (err) {
+          console.error('fetchWeather fatal:', err);
+          // 최소한 사용자에게도 표식
+          document.getElementById("weather-desc").textContent = "날씨 정보를 불러오지 못했습니다";
+        }
+      })();
+    });
+  </script>
+
+  </script>
+
+  <script>
+    // 테이블을 스캔해서 통계 카드 숫자를 업데이트 (수정본)
+    function updateStatsFromTable() {
+      const rows = document.querySelectorAll('.detection-table tbody tr');
+      let total = 0, resolved = 0, unresolved = 0, urgent = 0;
+
+      rows.forEach(row => {
+        const statusEl = row.querySelector('.status-label'); // ← 변경: .status-tag → .status-label
+        if (!statusEl) return;
+
+        total++;
+
+        // 클래스 매핑
+        const cls = statusEl.classList;
+        if (cls.contains('status-done')) {
+          resolved++;
+        } else if (cls.contains('status-urgent')) {
+          urgent++;
+        } else if (cls.contains('status-pending') || cls.contains('status-confirming')) {
+          // 확인중(status-confirming)도 미해결에 포함
+          unresolved++;
+        }
+      });
+
+      // 카드 숫자 반영
+      const elTotal = document.getElementById('total-count');
+      const elResolved = document.getElementById('resolved-count');
+      const elUnresolved = document.getElementById('unresolved-count');
+      const elUrgent = document.getElementById('urgent-count');
+
+      if (elTotal) elTotal.textContent = total;
+      if (elResolved) elResolved.textContent = resolved;
+      if (elUnresolved) elUnresolved.textContent = unresolved;
+      if (elUrgent) elUrgent.textContent = urgent;
+    }
+
+    // 최초 1회 실행
+    document.addEventListener('DOMContentLoaded', updateStatsFromTable);
+
+    // 테이블 행이 변하면 자동 반영 (옵저버 유지)
+    const tbody = document.querySelector('.detection-table tbody');
+    if (tbody) {
+      const obs = new MutationObserver(updateStatsFromTable);
+      obs.observe(tbody, { childList: true, subtree: true, characterData: true });
+    }
+  </script>
+
+  <script>
+    function getDamageCounts() {
+      const rows = document.querySelectorAll('.detection-table tbody tr');
+      const counts = { '포트홀': 0, '균열': 0, '악어균열': 0 };
+
+      rows.forEach(row => {
+        const typeCell = row.children[1];
+        if (!typeCell) return;
+        const raw = (typeCell.textContent || '').trim();
+        if (raw in counts) counts[raw]++;
+      });
+
+      return counts;
+    }
+
+    function renderDamageBarChart() {
+      const canvas = document.getElementById('damageChart');
+      if (!canvas) return;
+
+      // 고해상도 대응
+      const wrap = document.getElementById('damage-chart-wrap');
+      const dpr = window.devicePixelRatio || 1;
+      const cssW = wrap.clientWidth;
+      const cssH = wrap.clientHeight;
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // --- 데이터 준비 ---
+      // 기존 getDamageCounts() 사용 (포트홀/균열/악어균열을 집계)
+      const counts = getDamageCounts();
+      const baseLabels = ['포트홀', '균열', '악어균열'];
+      const baseValues = baseLabels.map(k => counts[k] || 0);
+      const totalValue = baseValues.reduce((a, b) => a + b, 0);
+
+      // 라벨 배열의 마지막으로 '전체' 추가(맨 우측)
+      const labels = [...baseLabels, '전체'];
+      const values = [...baseValues, totalValue];
+
+      const maxValue = Math.max(1, ...values);
+
+      // --- 스타일 ---
+      const bg = '#1c2c3a';
+      const axis = '#cfd8dc';
+      const grid = '#425563';
+      const txt = '#e0e0e0';
+      const barColors = {
+        '포트홀': '#5d8cca',   // accent
+        '균열': '#f39c12',
+        '악어균열': '#e74c3c',
+        '전체': '#9b59b6'     // 총계 전용 색
+      };
+
+      // --- 레이아웃 ---
+      const padding = { top: 20, right: 24, bottom: 40, left: 44 };
+      const W = cssW, H = cssH;
+      const chartW = W - padding.left - padding.right;
+      const chartH = H - padding.top - padding.bottom;
+
+      // 배경
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // y축 눈금
+      const steps = 4;
+      const stepVal = Math.ceil(maxValue / steps);
+
+      ctx.strokeStyle = grid;
+      ctx.fillStyle = txt;
+      ctx.lineWidth = 1;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.font = '12px Segoe UI, sans-serif';
+
+      for (let i = 0; i <= steps; i++) {
+        const val = i * stepVal;
+        const y = padding.top + chartH - (val / (steps * stepVal)) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + chartW, y);
+        ctx.stroke();
+        ctx.fillText(String(val), padding.left - 6, y);
+      }
+
+      // x축
+      ctx.strokeStyle = axis;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, padding.top + chartH);
+      ctx.lineTo(padding.left + chartW, padding.top + chartH);
+      ctx.stroke();
+
+      // --- 중앙 정렬을 위한 막대 배치 계산 ---
+      const n = labels.length;
+      const gap = Math.round(Math.max(12, Math.min(32, chartW / (n * 6))));
+      const barWidth = Math.max(12, Math.min(80, (chartW - gap * (n - 1)) / n));
+      const totalBarsWidth = n * barWidth + (n - 1) * gap;
+      const xStart = padding.left + Math.max(0, (chartW - totalBarsWidth) / 2);
+
+      // --- 막대 및 레이블 렌더 ---
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.font = '12px Segoe UI, sans-serif';
+
+      labels.forEach((label, idx) => {
+        const val = values[idx];
+        const x = xStart + idx * (barWidth + gap);
+        const hRatio = (steps * stepVal) === 0 ? 0 : (val / (steps * stepVal));
+        const h = hRatio * chartH;
+        const y = padding.top + chartH - h;
+
+        // 바
+        ctx.fillStyle = barColors[label] || '#90a4ae';
+        ctx.fillRect(x, y, barWidth, h);
+
+        // x 라벨
+        const labelX = x + barWidth / 2;
+        const labelY = padding.top + chartH + 8;
+        ctx.fillStyle = txt;
+        ctx.fillText(label, labelX, labelY);
+
+        // 값 (바 상단)
+        if (val > 0) {
+          ctx.textBaseline = 'bottom';
+          ctx.font = 'bold 13px Segoe UI, sans-serif';
+          ctx.fillText(String(val), labelX, y - 4);
+          ctx.textBaseline = 'top';
+          ctx.font = '12px Segoe UI, sans-serif';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', renderDamageBarChart);
+
+    // 테이블 변경 시 자동 갱신
+    (function observeTable() {
+      const tbody = document.querySelector('.detection-table tbody');
+      if (!tbody) return;
+      const obs = new MutationObserver(renderDamageBarChart);
+      obs.observe(tbody, { childList: true, subtree: true, characterData: true });
+    })();
+
+    // 리사이즈 시 재그리기(반응형)
+    window.addEventListener('resize', renderDamageBarChart);
   </script>
 
 </body>
