@@ -181,7 +181,6 @@
     }
 
     .admin-toggle {
-      color: var(--pure-white);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -219,12 +218,13 @@
     /* -------------------- */
     .card {
       background-color: #1c2c3a;
+      color: var(--primary);
       padding: 16px;
       border-radius: 8px;
       grid-column: 1 / -1;
     }
 
-    .card h3 {
+    .card h2 {
       color: var(--primary);
       margin-bottom: 10px;
     }
@@ -251,6 +251,22 @@
       background-color: var(--highlight);
       color: var(--pure-white);
       font-size: 16px;
+    }
+
+    /* 날짜 입력 필드 스타일 */
+    .filter-bar input[type="date"] {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background-color: var(--highlight);
+      color: var(--pure-white);
+      font-size: 16px;
+    }
+
+    /* 날짜 구분자 */
+    .filter-bar .date-sep {
+      opacity: .8;
+      margin: 0 4px;
     }
 
     .filter-button {
@@ -346,6 +362,21 @@
     .status-confirming {
       background-color: #3498db;
     }
+
+    /* 초기화 버튼 */
+    .btn-reset {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      background: var(--accent);
+      color: var(--pure-white);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .btn-reset:hover {
+      background-color: #17a488;
+    }
   </style>
 </head>
 
@@ -393,29 +424,34 @@
 
           <div class="filter-bar">
             <select id="filter-region">
-              <option value="">지역 전체</option>
-              <option value="서울">서울</option>
-              <option value="부산">부산</option>
+              <option value="">지역 전체(광주)</option>
+              <option value="동구">동구</option>
+              <option value="서구">서구</option>
+              <option value="남구">남구</option>
+              <option value="북구">북구</option>
+              <option value="광산구">광산구</option>
             </select>
-            <select id="filter-date">
-              <option value="">전체 기간</option>
-              <option value="24h">최근 24시간</option>
-              <option value="1w">최근 1주일</option>
-            </select>
+
+            <input type="date" id="filter-start" aria-label="시작일" />
+            <span class="date-sep">~</span>
+            <input type="date" id="filter-end" aria-label="종료일" />
+
             <select id="filter-type">
               <option value="">전체 유형</option>
               <option value="포트홀">포트홀</option>
               <option value="균열">균열</option>
               <option value="악어균열">악어균열</option>
             </select>
+
             <select id="filter-status">
               <option value="">전체 상태</option>
               <option value="해결">해결</option>
               <option value="미해결">미해결</option>
               <option value="신속처리대상">신속처리대상</option>
             </select>
-            <button id="filter-button" class="filter-button">검색</button>
-            <button id="excel-button" class="filter-button">엑셀 다운로드</button>
+
+            <button id="reset-filters" class="btn-reset" title="필터 초기화" type="button">초기화</button>
+            <button id="excel-button" class="filter-button" type="button">엑셀 다운로드</button>
           </div>
 
           <table class="detection-table">
@@ -423,7 +459,7 @@
               <tr>
                 <th>주소</th>
                 <th>유형</th>
-                <th>시간</th>
+                <th>일시</th>
                 <th>처리 상태</th>
               </tr>
             </thead>
@@ -431,25 +467,25 @@
               <tr>
                 <td>광주 서구 쌍촌동 123-45</td>
                 <td>포트홀</td>
-                <td>14:25</td>
+                <td>2025-08-21 14:25:00</td>
                 <td><span class="status-label status-pending">미해결</span></td>
               </tr>
               <tr>
                 <td>광주 북구 운암동 77-12</td>
                 <td>균열</td>
-                <td>13:10</td>
+                <td>2025-08-22 13:10:00</td>
                 <td><span class="status-label status-done">해결</span></td>
               </tr>
               <tr>
                 <td>광주 남구 봉선동 88-21</td>
-                <td>함몰</td>
-                <td>12:02</td>
+                <td>악어균열</td>
+                <td>2025-08-22 12:02:00</td>
                 <td><span class="status-label status-urgent">신속처리대상</span></td>
               </tr>
               <tr>
                 <td>광주 동구 산수동 55-10</td>
                 <td>균열</td>
-                <td>11:45</td>
+                <td>2025-08-23 11:45:00</td>
                 <td><span class="status-label status-confirming">확인중</span></td>
               </tr>
             </tbody>
@@ -474,11 +510,35 @@
   </script>
 
   <script>
-    document.getElementById('filter-button').addEventListener('click', function () {
-      const region = document.getElementById('filter-region').value;
-      const date = document.getElementById('filter-date').value;
-      const type = document.getElementById('filter-type').value;
-      const status = document.getElementById('filter-status').value;
+    // 주소에서 '동구/서구/남구/북구/광산구' 추출
+    function extractGu(address) {
+      const m = address.match(/(동구|서구|남구|북구|광산구)/);
+      return m ? m[1] : "";
+    }
+
+    // "YYYY-MM-DD HH:MM:SS" → Date
+    function parseKSTDateTime(str) {
+      const isoLike = str.trim().replace(" ", "T");
+      return new Date(isoLike);
+    }
+
+    // 기간 필터 비교를 위한 보조
+    function normalizeRange(startVal, endVal) {
+      const start = startVal ? new Date(startVal + "T00:00:00") : null;
+      const end = endVal ? new Date(endVal + "T23:59:59") : null;
+      // 사용자가 실수로 시작 > 종료를 넣었을 때 자동 보정
+      if (start && end && start > end) return { start: end, end: start };
+      return { start, end };
+    }
+
+    function applyFilters() {
+      const region = document.getElementById('filter-region').value.trim();      // '', '서구' ...
+      const startVal = document.getElementById('filter-start').value;            // '', 'YYYY-MM-DD'
+      const endVal = document.getElementById('filter-end').value;              // '', 'YYYY-MM-DD'
+      const type = document.getElementById('filter-type').value.trim();      // '', '포트홀' ...
+      const status = document.getElementById('filter-status').value.trim();    // '', '해결' ...
+
+      const { start, end } = normalizeRange(startVal, endVal);
 
       const rows = document.querySelectorAll('.detection-table tbody tr');
 
@@ -486,27 +546,91 @@
         const [addressCell, typeCell, timeCell, statusCell] = row.children;
 
         const address = addressCell.textContent.trim();
+        const rowGu = extractGu(address);                // 주소에서 구 추출
         const damageType = typeCell.textContent.trim();
-        const damageStatus = statusCell.textContent.trim();
-        const hour = parseInt(timeCell.textContent.trim().split(':')[0]);
+        const damageTime = parseKSTDateTime(timeCell.textContent);
+        const damageStatus = statusCell.textContent.trim(); // span 안의 텍스트
 
         let show = true;
 
-        if (region && !address.includes(region)) show = false;
-        if (type && damageType !== type) show = false;
-        if (status && damageStatus !== status) show = false;
+        // 지역 필터
+        if (region && rowGu !== region) show = false;
 
-        // 시간 필터 (예시: 단순히 시간대 기반으로 필터링)
-        if (date) {
-          const now = new Date();
-          const damageHour = now.getHours() - hour;
+        // 유형 필터
+        if (show && type && damageType !== type) show = false;
 
-          if (date === "24h" && damageHour > 24) show = false;
-          if (date === "1w" && damageHour > 168) show = false;
+        // 상태 필터
+        if (show && status && damageStatus !== status) show = false;
+
+        // 기간(달력) 필터
+        if (show && (start || end)) {
+          if (start && damageTime < start) show = false;
+          if (end && damageTime > end) show = false;
         }
 
         row.style.display = show ? "" : "none";
       });
+    }
+
+    function bindAutoFilters() {
+      const region = document.getElementById('filter-region');
+      const typeSel = document.getElementById('filter-type');
+      const statusSel = document.getElementById('filter-status');
+      const start = document.getElementById('filter-start');
+      const end = document.getElementById('filter-end');
+
+      [region, typeSel, statusSel, start, end].forEach(el => {
+        if (!el) return;
+        el.addEventListener('change', applyFilters);
+      });
+    }
+
+    // 초기화 버튼 (값 비우고 전체 표시)
+    document.getElementById('reset-filters').addEventListener('click', function (e) {
+      e.preventDefault(); // 혹시 모를 기본동작 차단
+      document.getElementById('filter-region').value = "";
+      document.getElementById('filter-start').value = "";
+      document.getElementById('filter-end').value = "";
+      document.getElementById('filter-type').value = "";
+      document.getElementById('filter-status').value = "";
+      applyFilters();
+    });
+
+    // 페이지 로드 시 한 번 전체 적용 + 자동 바인딩
+    document.addEventListener('DOMContentLoaded', function () {
+      bindAutoFilters();
+      applyFilters();
+    });
+
+    document.getElementById('excel-button').addEventListener('click', function () {
+      const table = document.querySelector('.detection-table');
+      const rows = Array.from(table.querySelectorAll('tr'))
+        .filter(tr => tr.style.display !== 'none');
+
+      const toCSV = rows.map(tr => {
+        const cells = Array.from(tr.children).map(td => {
+          const txt = td.textContent.replace(/\r?\n|\r/g, ' ').trim();
+          const escaped = '"' + txt.replace(/"/g, '""') + '"';
+          return escaped;
+        });
+        return cells.join(',');
+      }).join('\n');
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const filename = `도로 손상 목록_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.csv`;
+
+      const bom = '\ufeff';
+      const blob = new Blob([bom, toCSV], { type: 'text/csv;charset=utf-8;' });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     });
   </script>
 </body>
